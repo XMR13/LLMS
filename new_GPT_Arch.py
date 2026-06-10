@@ -2,14 +2,17 @@ import tiktoken
 import torch
 import torch.nn as nn
 
+from Attention import Multihead_Attention_V2
+
 """
 Merancang implementasi dari Arsitektur GPT (mengikuti konfigurasi dari GPT-2)
 TO DO:
-1. Membuat rancangan layer normalisasi 
-2. Merancang fukti aktivasi GELU 
-3. Membuat feedforward network 
-4. Skip connection (residual conncetion)
-5. Menggabungkan bagian - bagian tersebut ke arsitektur GPT
+1. Membuat rancangan layer normalisasi ✅
+2. Merancang fukti aktivasi GELU ✅
+3. Membuat feedforward network ✅
+4. Skip connection (residual conncetion)✅
+5. Membuat transformer blocks✅
+6. Menggabungkan bagian - bagian tersebut ke arsitektur GPT
 
 """
 
@@ -35,7 +38,7 @@ class GPT_Dummy_model(nn.Module):
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
         self.drop_emb = nn.Dropout(cfg["drop_rate"])
         self.trf_blocks = nn.Sequential(
-            *[DummyTransformerblock(cfg)
+            *[Transformerblock(cfg)
             for _ in range(cfg["num_layers"])]
         )
 
@@ -62,12 +65,47 @@ class GPT_Dummy_model(nn.Module):
         logits = self.out(x)
         return logits
     
-class DummyTransformerblock(nn.Module):
+class Transformerblock(nn.Module):
     def __init__(self, cfg):
         super().__init__()
+        """
+        Adalah kelas yang akan digunakan sebagai placeholder untuk blok
+        transformer yang ada pada bagian 
+        """
+        self.attention = Multihead_Attention_V2(
+            d_in=cfg["emb_dim"],
+            d_out=cfg["emb_dim"],
+            context_length=cfg["context_length"],
+            num_heads=cfg["num_heads"],
+            dropout=cfg["drop_rate"],
+            kqv_bias=cfg["qkv_bias"]
+        )
+        self.ffn = FeedForwardModule(cfg=cfg)
+        self.normalize1 = LayerNorm(cfg["emb_dim"])
+        self.normalize2 = LayerNorm(cfg["emb_dim"])
+        self.dropout = nn.Dropout(cfg["drop_rate"])
+
 
     def forward(self, x):
+        """proses step by step dari transformer ini sesuai dengan teori"""
+        #pertama inisiasikan terlebih dahulu shortcut connectionya
+        #dengan cara menetapkan x di awal sebagai shoritcut
+        shortcut = x
+        x = self.normalize1(x)
+        x = self.attention(x)
+        x = self.dropout(x)
+        x = x + shortcut
+
+        #ulangi bagian yang atas, namun disini attention digantikan dengan 
+        #feedforwadnetwork
+        shortcut = x
+        x = self.normalize2(x)
+        x = self.ffn(x)
+        x = self.dropout(x)
+        x = x + shortcut
+
         return x
+        
 
 class LayerNorm(nn.Module):
     def __init__(self, embedding_dim, eps=1e-5):
@@ -118,7 +156,53 @@ class FeedForwardModule(nn.Module):
 
     def forward(self, X):
         return self.layers(X)
+
+class ExampleDeepNeuralNets(nn.Module):
+    def __init__(self, layer_sizes, use_shortcut:bool):
+        super().__init__()
+        self.use_shortcut = use_shortcut
+        self.layers = nn.ModuleList([
+            nn.Sequential(nn.Linear(layer_sizes[0], layer_sizes[1]), 
+                          GELU()),
+            nn.Sequential(nn.Linear(layer_sizes[1], layer_sizes[2]), 
+            GELU()),
+            nn.Sequential(nn.Linear(layer_sizes[2], layer_sizes[3]), 
+            GELU()),
+            nn.Sequential(nn.Linear(layer_sizes[3], layer_sizes[4]), 
+            GELU()),
+            nn.Sequential(nn.Linear(layer_sizes[4], layer_sizes[5]), 
+            GELU()),
+            
+        ])
         
+    def forward(self, x):
+        #do a bnackward passes
+        for layer in self.layers:
+            #first i need to check if it is good enouigh
+            layer_output = layer(x)
+            #check if we really can use the skip connection
+            if self.use_shortcut and x.shape == layer_output.shape:
+                x = x + layer_output
+            else:
+                x = layer_output
+        return x
+
+def print_gradients(model, x):
+    """
+    fungsi sederhana yang akan digunakan untuk mengetes print gradien
+    """
+    output = model(x)
+    target = torch.tensor([[0.]])
+
+    loss = nn.MSELoss()
+    loss = loss(output, target)
+
+    loss.backward()
+
+    #kemudian baru mengambil gradiennya
+    for name, param in model.named_parameters():
+        if 'weight' in name:
+            print(f"{name} memiliki gradient mean sebesar {param.grad.abs().mean().item()}")
 
 def main_exp():
     #menunjukkan hal ini terlebih dahulu
@@ -141,22 +225,21 @@ def main_exp():
     #testing_gpt_model
     GPT_MODEL1 = GPT_Dummy_model(GPT2_124M_Config)
 
-
 def main():
+    torch.manual_seed(123)
     #berikan contoh saja 
-    tensor_contoh = torch.randn(2, 6)
-    layer = nn.Sequential(nn.Linear(6,4), nn.ReLU())
-    hasil = layer(tensor_contoh)
+    #siapkan data yang ada
+    contoh_data = torch.randn(2,10, 768)
+    tf_block = Transformerblock(GPT2_124M_Config)
+    output_transformers = tf_block(contoh_data)
 
-    #mencari mean dan variance
-    ffn = FeedForwardModule(GPT2_124M_Config)
+    print(f"sebelum transformer, shape data: {contoh_data.shape}")
+    print(f"setelah transformer, shape data: {output_transformers.shape}")
+
+    #check apakah sama (tidak sesuai)
+    print(torch.equal(contoh_data, output_transformers))
+
     
-    #tensor baru 
-    tensor_experimental = torch.randn(2, 3, GPT2_124M_Config["emb_dim"])
-    tensor_ffn = ffn(tensor_experimental)
-    print(f"sebelum diproses FFN {tensor_experimental.shape}")
-    print(f"setelah ffn {tensor_ffn.shape}")
-
 
 
 
