@@ -204,6 +204,24 @@ def print_gradients(model, x):
         if 'weight' in name:
             print(f"{name} memiliki gradient mean sebesar {param.grad.abs().mean().item()}")
 
+def generate_text_simple(model, idx,
+                         max_new_tokens, context_size):
+    """
+    Simple text generator
+    """
+    for _ in range(max_new_tokens):
+        idx_cond = idx[:, -context_size:]
+        with torch.no_grad():
+            logits = model(idx_cond)
+
+        logits= logits[:, -1, :]
+        probas = torch.softmax(logits, dim=-1)
+        idx_next = torch.argmax(probas, dim=-1, keepdim=True)
+        idx = torch.cat((idx, idx_next), dim=1)
+
+    return idx
+
+
 def main_exp():
     #menunjukkan hal ini terlebih dahulu
     tokenizer = tiktoken.get_encoding("gpt2")
