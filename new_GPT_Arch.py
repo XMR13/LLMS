@@ -12,7 +12,7 @@ TO DO:
 3. Membuat feedforward network ✅
 4. Skip connection (residual conncetion)✅
 5. Membuat transformer blocks✅
-6. Menggabungkan bagian - bagian tersebut ke arsitektur GPT
+6. Menggabungkan bagian - bagian tersebut ke arsitektur GPT✅
 
 """
 
@@ -26,10 +26,30 @@ GPT2_124M_Config = {
     "qkv_bias"      : False, #apakah menggunakan kqv bias
 }
 
+GPT2_medium = {
+    "vocab_size"    : 50_257, #besar vocab size dari BEP
+    "context_length": 1024, #besar context length
+    "emb_dim"       : 1024, #embedding dimension dari gpt
+    "num_heads"     : 16,  #banyak attention heads
+    "num_layers"    : 24,  #banyak layer transformer yang akan digunakan
+    "drop_rate"     : 0.1, #rate dropout
+    "qkv_bias"      : False, #apakah menggunakan kqv bias
+}
+
+GPT2_Large = {
+    "vocab_size"    : 50_257, #besar vocab size dari BEP
+    "context_length": 1024, #besar context length
+    "emb_dim"       : 1280, #embedding dimension dari gpt
+    "num_heads"     : 20,  #banyak attention heads
+    "num_layers"    : 36,  #banyak layer transformer yang akan digunakan
+    "drop_rate"     : 0.1, #rate dropout
+    "qkv_bias"      : False, #apakah menggunakan kqv bias
+}
+
 #set the seed
 torch.manual_seed(123)
 
-class GPT_Dummy_model(nn.Module):
+class GPT_Model(nn.Module):
     def __init__(self,cfg):
         super().__init__()
 
@@ -60,8 +80,10 @@ class GPT_Dummy_model(nn.Module):
         x = self.drop_emb(x)
         x = self.trf_blocks(x)
 
-        #nornalization before the outpyt layer
+        #nornalization before the output layer
         x = self.final_norm(x)
+
+        #the output shape of tensor is (batch, embedding_dim, vocab_size)
         logits = self.out(x)
         return logits
     
@@ -187,7 +209,7 @@ class ExampleDeepNeuralNets(nn.Module):
                 x = layer_output
         return x
 
-def print_gradients(model, x):
+def _print_gradients(model, x):
     """
     fungsi sederhana yang akan digunakan untuk mengetes print gradien
     """
@@ -203,7 +225,7 @@ def print_gradients(model, x):
     for name, param in model.named_parameters():
         if 'weight' in name:
             print(f"{name} memiliki gradient mean sebesar {param.grad.abs().mean().item()}")
-
+            
 def generate_text_simple(model, idx,
                          max_new_tokens, context_size):
     """
@@ -214,48 +236,68 @@ def generate_text_simple(model, idx,
         with torch.no_grad():
             logits = model(idx_cond)
 
+        #take the last token of the models and find highest probability distirbution
         logits= logits[:, -1, :]
-        probas = torch.softmax(logits, dim=-1)
-        idx_next = torch.argmax(probas, dim=-1, keepdim=True)
+        probability = torch.softmax(logits, dim=-1)
+        idx_next = torch.argmax(probability, dim=-1, keepdim=True)
+
+        #append the token back into the idx
         idx = torch.cat((idx, idx_next), dim=1)
 
     return idx
 
 
-def main_exp():
+
+def main():
     #menunjukkan hal ini terlebih dahulu
     tokenizer = tiktoken.get_encoding("gpt2")
     batch = []
 
     txt1 = "Every effort moves you"
-    txt2 = "Every day holds a"
-
     #print hasil tokenizer
     token1 = tokenizer.encode(txt1)
     print(f" hasil tokenizer shape  dengan nilai adalah \n {token1}")
-    batch.append(torch.tensor(tokenizer.encode(txt1)))
-    batch.append(torch.tensor(tokenizer.encode(txt2)))
 
     #stack every element in that said list into a torch stack
-    batch = torch.stack(batch, dim=0)
-    print(batch)
+    batch = torch.tensor(token1).unsqueeze(0)
 
     #testing_gpt_model
-    GPT_MODEL1 = GPT_Dummy_model(GPT2_124M_Config)
+    model = GPT_Model(GPT2_124M_Config)
+    output_batch = model(batch)
+    
+    print(f"\nhasil setelah dari model GPT adalah {output_batch}")
+    print("dengan shape", output_batch.shape)
 
-def main():
-    torch.manual_seed(123)
-    #berikan contoh saja 
-    #siapkan data yang ada
-    contoh_data = torch.randn(2,10, 768)
-    tf_block = Transformerblock(GPT2_124M_Config)
-    output_transformers = tf_block(contoh_data)
+    #generating text
+    model.eval()
+    token_generate = generate_text_simple(
+        model,
+        batch,
+        max_new_tokens=10,
+        context_size=GPT2_124M_Config["context_length"]
+    )
 
-    print(f"sebelum transformer, shape data: {contoh_data.shape}")
-    print(f"setelah transformer, shape data: {output_transformers.shape}")
+    print(f"\n print output: {token_generate}")
+    print(f"output_length : {len(token_generate[0])}")
+    decoded_teks = tokenizer.decode(token_generate.squeeze(0).tolist())
+    print(decoded_teks)
+    
+    
+    
 
-    #check apakah sama (tidak sesuai)
-    print(torch.equal(contoh_data, output_transformers))
+# def main_exp():
+#     torch.manual_seed(123)
+#     #berikan contoh saja 
+#     #siapkan data yang ada
+#     contoh_data = torch.randn(2,10, 768)
+#     tf_block = Transformerblock(GPT2_124M_Config)
+#     output_transformers = tf_block(contoh_data)
+
+#     print(f"sebelum transformer, shape data: {contoh_data.shape}")
+#     print(f"setelah transformer, shape data: {output_transformers.shape}")
+
+#     #check apakah sama (tidak sesuai)
+#     print(torch.equal(contoh_data, output_transformers))
 
     
 
