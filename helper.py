@@ -56,3 +56,31 @@ def visualize_training_results(model, training_losses, validation_losses,
     ax2.set_xlabel("Tokens seen")
     fig.tight_layout()
     plt.show()
+
+#-------------------
+# MODEL UTILITY
+#-------------------
+def save_model(model, name_model, optimizer=None):
+    """
+    simple function to save the model
+    """
+    final_model_name : str = name_model + ".pth"
+    if optimizer is not None:
+        torch.save({
+            "model_state_dict" :model.state_dict(), 
+            "optimizer_state_dict":optimizer.state_dict(),
+            },
+            final_model_name    
+        )
+    else:
+        torch.save(
+            model.state_dict(),
+            final_model_name
+        )
+
+def load_model(model, model_path, device):
+    """
+    simple function to load the model
+    """
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    return model

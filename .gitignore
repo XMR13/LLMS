@@ -11,6 +11,9 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
+#Models and data
+Model/
+
 # Distribution / packaging
 build/
 dist/

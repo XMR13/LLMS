@@ -3,8 +3,8 @@ import tiktoken
 
 from pathlib import Path
 from sampling_data import get_dataloader
-from new_GPT_Arch import GPT2_124M_Config, GPT_Model, generate_text_simple, generate_text
-from helper import text_to_token_ids, token_ids_to_text, visualize_training_results
+from new_GPT_Arch import GPT2_124M_Config, GPT_Model, generate_text
+from helper import text_to_token_ids, token_ids_to_text, visualize_training_results, save_model
 from torch.optim import AdamW
 from tqdm import tqdm
 
@@ -20,7 +20,7 @@ Tahapan dalam melakukan training
 dataset_path = Path(r"dataset\the_verdict.txt")
 tokenizer = tiktoken.get_encoding("gpt2")
 model = GPT_Model(GPT2_124M_Config)
-NUM_EPOCHS = 10
+NUM_EPOCHS = 15
 
 with open(dataset_path, mode="r", encoding="utf-8") as f:
     text_data = f.read()
@@ -217,7 +217,9 @@ def main():
         tokens_seen, epochs_tensor
     )
 
-
+    #save the model
+    save_model(model, "model_testing", optimizer)
+    print("Model berhasil disimpan")
 
 
 if __name__=="__main__":
