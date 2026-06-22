@@ -243,10 +243,49 @@ def generate_text_simple(model, idx,
 
         #append the token back into the idx
         idx = torch.cat((idx, idx_next), dim=1)
-
     return idx
 
+def generate_text(model, idx, max_new_tokens, context_size,
+                  temperature, top_k=None, eos_id=None):
+    """
+    Fungsi generate text dengan mengintegrasikan fungsi
+    temperatur scaling dan top-k sampling
+    """
+    #loop for tokens
+    for _ in range(max_new_tokens):
+        idx_cond = idx[:, -context_size:]
+        model.eval()
+        with torch.no_grad():
+            logits = model(idx_cond)
 
+        #take the last tokens of the models and apply them method generation
+        logits = logits[:, -1, :]
+        if top_k is not None:
+            top_logits, _ = torch.topk(logits, top_k)
+            min_val = top_logits[:, -1]
+            
+            #kemudian ambil hanya token top-k yang lebih besar dari minv_val
+            logits = torch.where(
+                condition=logits < min_val,
+                input=torch.tensor(float('-inf')),
+                other=logits
+            )
+        
+        #now we get the logits and after that, let's do a temperatur scaling
+        if temperature > 0.0:
+            logits = logits / temperature
+            probas = torch.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probas, num_samples=1)
+        else:
+            idx_next = torch.argmax(logits, dim=-1, keepdim=True)
+        
+        #if the next indeks(tokens) is the same as eos id then done
+        if idx_next == eos_id:
+            break
+
+        idx = torch.cat((idx, idx_next), dim=1)
+    return idx
+        
 
 def main():
     #menunjukkan hal ini terlebih dahulu

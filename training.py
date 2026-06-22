@@ -3,7 +3,7 @@ import tiktoken
 
 from pathlib import Path
 from sampling_data import get_dataloader
-from new_GPT_Arch import GPT2_124M_Config, GPT_Model, generate_text_simple
+from new_GPT_Arch import GPT2_124M_Config, GPT_Model, generate_text_simple, generate_text
 from helper import text_to_token_ids, token_ids_to_text, visualize_training_results
 from torch.optim import AdamW
 from tqdm import tqdm
@@ -179,8 +179,8 @@ def generate_and_print_sample(model, tokenizer, device, start_context):
 
     #generate text
     with torch.no_grad():
-        output_tokens = generate_text_simple(model, encoded, max_new_tokens=50,
-                             context_size=context_length)
+        output_tokens = generate_text(model, encoded, max_new_tokens=50,
+                             context_size=context_length, temperature=1.1, top_k=10)
     #and then you convert it back into text
     decoded_text = token_ids_to_text(output_tokens, tokenizer=tokenizer)
     print(f"text yang dirpint adalah: ")
