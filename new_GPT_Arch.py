@@ -138,7 +138,7 @@ class LayerNorm(nn.Module):
         super().__init__()
         self.eps = eps
         self.scale = nn.Parameter(torch.ones(embedding_dim))
-        self.shitft = nn.Parameter(torch.zeros(embedding_dim))
+        self.shift = nn.Parameter(torch.zeros(embedding_dim))
 
     def forward(self, x):
         #do the forward method of the self 
@@ -147,7 +147,7 @@ class LayerNorm(nn.Module):
         tensor_variance = x.var(dim=-1, keepdim=True, unbiased=False)
 
         normalized = (x - tensor_mean)/torch.sqrt(tensor_variance + self.eps)
-        return self.scale * normalized + self.shitft
+        return self.scale * normalized + self.shift
 
 class GELU(nn.Module):
     """Modul neural network untuk fungsi aktivasi GELU"""
